@@ -53,6 +53,7 @@ def filosofo(id, rondas=3):
     - Los demás filósofos toman primero el IZQUIERDO y luego el DERECHO.
     - Alternativamente, puedes usar un semáforo contador (árbitro/mozo) que permita un máximo de 4 comensales.
     """
+
     for _ in range(rondas):
         pensar(id)
         
@@ -66,6 +67,16 @@ def filosofo(id, rondas=3):
         # PISTA: Implementa la solución asimétrica de Dijkstra (romper Espera Circular)
         # o utiliza un semáforo árbitro para evitar el interbloqueo (Deadlock).
         #
+        if id == NUM_FILOSOFOS - 1:
+         # El último filósofo toma primero el DERECHO y luego el IZQUIERDO 
+         primero = tenedor_der 
+         segundo = tenedor_izq
+        else: # Los demás filósofos toman primero el IZQUIERDO y luego el DERECHO 
+         primero = tenedor_izq 
+         segundo = tenedor_der 
+        with tenedores[primero]: 
+            with tenedores[segundo]: 
+                comer(id) # los tenedores se liberan automáticamente
         # TODO: Adquiere los tenedores adyacentes de forma segura, invoca comer(id)
         # y libera los tenedores:
         pass

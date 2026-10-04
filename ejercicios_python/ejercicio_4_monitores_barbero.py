@@ -73,8 +73,44 @@ class BarberiaMonitor:
             #    - avisar al barbero y al siguiente cliente en espera (notify).
             # 7. Retornar True.
             # =====================================================================
-            pass
-            return False
+
+            self.clientes_esperando += 1     # 1 El cliente toma asiento en la sala de espera
+            print(f" Cliente {cliente_id} espera. "f"(Esperando: {self.clientes_esperando})")
+            self.cond_barbero.notify()    # Despertar al barbero  si está dormido
+            # Esperar mientras el sillón del barbero esté ocupado
+            while self.silla_barbero_ocupada:
+                self.cond_sala_espera.wait()
+
+            # El cliente pasa al sillón del barbero
+
+            self.clientes_esperando -= 1    #    - decrementar self.clientes_esperando
+            self.silla_barbero_ocupada = True
+            self.cliente_listo_en_sillon = True
+                # Es un nuevo corte
+            self.corte_terminado = False
+            print(f" Cliente {cliente_id} pasa al sillón del barbero.")
+                # Avisar al barbero que ya hay un cliente listo
+            self.cond_barbero.notify()
+
+            #  Esperar hasta que termine el corte
+            while not self.corte_terminado:
+                self.cond_corte.wait()
+
+                #  El corte terminó
+            print(f" Cliente {cliente_id} terminó su corte.")
+
+            self.silla_barbero_ocupada = False
+            self.cliente_listo_en_sillon = False
+            self.corte_terminado = False
+
+                # Avisar al barbero
+            self.cond_barbero.notify()
+
+                # Avisar al siguiente cliente que puede ocupar el sillón
+            self.cond_sala_espera.notify()
+
+            #  Cliente atendido correctamente
+            return True
 
     def atender_siguiente_cliente(self):
         """
@@ -89,7 +125,33 @@ class BarberiaMonitor:
             # 2. Si la barbería cerró y no quedan clientes, retornar False.
             # 3. Si hay un cliente listo en el sillón, retornar True.
             # =====================================================================
-            pass
+
+            #  Esperar hasta que haya un cliente en el sillón
+
+            while (
+                not self.cliente_listo_en_sillon
+                and self.barberia_abierta
+            ):
+
+                # Si hay clientes esperando, permitir que uno pase al sillón
+                if self.clientes_esperando > 0:
+                    self.cond_sala_espera.notify()
+
+                print(" [Barbero - Esperando...] No hay cliente en el sillón. ")
+                self.cond_barbero.wait() 
+
+            #  Si la barbería cerró y no quedan clientes
+            if (
+               not self.barberia_abierta
+                and not self.cliente_listo_en_sillon
+             ):
+                 return False
+
+            # 3. Hay un cliente listo 
+            if self.cliente_listo_en_sillon:
+                print(" [Barbero] Cliente listo para el corte.")
+                return True
+            
             return False
 
     # Alias pedagógico
@@ -106,7 +168,17 @@ class BarberiaMonitor:
             # 2. Avisar al cliente en el sillón (self.cond_corte.notify()).
             # 3. Esperar a que el cliente se levante del sillón (self.cond_barbero.wait()).
             # =====================================================================
-            pass
+
+            # Marcar que el corte terminó
+            self.corte_terminado = True
+
+            #  Avisar al cliente
+            self.cond_corte.notify()
+
+            #  Esperar a que el cliente se levante del  sillón
+            while self.silla_barbero_ocupada:
+                self.cond_barbero.wait()
+        pass
 
     def cerrar_barberia(self):
         with self.lock:
@@ -121,7 +193,7 @@ def hilo_barbero(barberia):
         hay_cliente = barberia.atender_siguiente_cliente()
         if not hay_cliente:
             break
-        print("✂️ [Barbero] Cortando el cabello...")
+        print(" [Barbero - Cortando el cabello...] ")
         time.sleep(random.uniform(0.1, 0.25))
         barberia.finalizar_corte()
 
